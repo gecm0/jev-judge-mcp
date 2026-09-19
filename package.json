@@ -1,0 +1,13 @@
+{
+  "name": "jev-plugin",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Claude Code plugin exposing TypeSafe's Jev as an MCP tool.",
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": { "test": "node --test test.mjs" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.0",
+    "typebox": "^1.3.7"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "jev",
+  "description": "TypeSafe's Jev as a typed decision tool for Claude Code.",
+  "owner": {
+    "name": "German Castro"
+  },
+  "plugins": [
+    {
+      "name": "typesafe",
+      "source": "./",
+      "description": "Typed judgments with calibrated probabilities from TypeSafe's Jev, as an MCP tool plus a usage skill.",
+      "category": "engineering",
+      "keywords": [
+        "typesafe",
+        "jev",
+        "decision",
+        "classification"
+      ]
+    }
+  ]
+}
