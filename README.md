@@ -1,22 +1,35 @@
-# jev-plugin
+# jev-judge-mcp
 
-A Claude Code plugin that gives Claude one tool, `judge`, for consulting
-[TypeSafe's Jev](https://docs.typesafe.ai/concepts/system-one), plus a skill teaching it when
-and how to ask. Ported from the Pi extension `pi-jev`, keeping its request contract, validation
-and error handling.
+An MCP server giving a coding agent one tool, `judge`, for consulting
+[TypeSafe's Jev](https://docs.typesafe.ai/concepts/system-one): narrow typed questions about
+supplied evidence, answered with calibrated probabilities instead of prose. Ported from the Pi
+extension `pi-jev`, keeping its request contract, validation and error handling.
 
 Jev complements the active model; it does not replace it.
 
 ## Install
 
+The server is plain MCP over stdio and needs no vendor-specific environment, so any MCP client
+works. Point it at `mcp/server.mjs` with `node`:
+
+```json
+{
+  "mcpServers": {
+    "jev": { "command": "node", "args": ["/absolute/path/to/jev-judge-mcp/mcp/server.mjs"] }
+  }
+}
+```
+
+Claude Code can instead install the bundled plugin, which adds the question-design skill:
+
 ```bash
-claude plugin marketplace add ~/Developer/jev-plugin
+claude plugin marketplace add ~/Developer/jev-judge-mcp
 claude plugin install typesafe@jev
 ```
 
 Get an API key from [TypeSafe](https://console.typesafe.ai/). Set `TYPESAFE_API_KEY` in the
-environment that launches Claude Code, then restart it. Do not paste the key into chat and do not
-commit it. This plugin does not load `.env` files.
+environment that launches your client, then restart it. Do not paste the key into chat and do not
+commit it. This server does not load `.env` files.
 
 `TYPESAFE_MODEL` optionally pins a version, for example `jev-1.13.0`. The default, `jev-latest`,
 follows TypeSafe's stable alias and can change over time. The response reports the model the API

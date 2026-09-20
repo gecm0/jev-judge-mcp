@@ -30,6 +30,10 @@ Split a multi-factor judgment into its factors and combine them yourself. The pa
 the day the result is wrong: you change a weight, not a prompt. Your weights stay inspectable;
 Jev's judgments stay reusable.
 
+**Ask the factors and stop there.** Adding "and which is best overall?" alongside them looks free,
+and it is the answer you will then quote. It comes back mushy, because it is the compound question
+you just decomposed, wearing a fresh ID. Compose the verdict yourself from the sharp answers.
+
 ## Fan out
 
 An extra question costs its own tokens and almost no latency. TypeSafe's parallel-questions
@@ -62,8 +66,22 @@ state, or facts into a question, means the separation broke.
 **Give every `choice` a no-match option.** Jev picks from what you offer, so an incomplete list
 forces a wrong answer into it. Before asking, confirm the real answer is among the candidates.
 
+**Assembling the slate is your job, not Jev's.** It ranks what you hand it and cannot invent the
+option you failed to think of. When the hard part is producing good candidates, that work happens
+before the call.
+
+**Rank many items with a `score` each, not one `choice`.** Choice returns a single winner and
+splits its probability mass across rivals, so five decent candidates all land near 0.2. A
+comparable per-item score gives every item a position you can sort, threshold and re-weight
+without another call.
+
 **Write score levels that stand alone.** "Broken functionality with an available workaround" beats
 "medium". Each level must be readable without the others.
+
+**One criterion names one state of the world.** "An unfamiliar token that tells a developer
+nothing, and the name should describe the capability instead" is two claims, so Jev cannot place
+evidence that satisfies one and not the other. Keep your reasoning in the instructions; leave the
+criteria as plain descriptions of what is the case.
 
 **Use structured objects or arrays** for `instructions` or `criteria` when a definition, contrast,
 exclusion or example sharpens them. Plain strings are fine for simple questions.
@@ -83,6 +101,11 @@ shape, not constants:
 *every* input means the design is wrong: options overlap, one question mixes several dimensions,
 or the state lacks the evidence needed to answer. Systematic low confidence is your bug, not the
 model's.
+
+**On a slate you wrote yourself, low confidence is a verdict on the slate.** Jev spreading 0.49,
+0.26 and 0.24 across your three candidates is not weak evidence about the world. It is saying the
+three are interchangeable. Read it as "go find a better option", not as "the winner squeaked
+through", and never promote a 0.49 into a recommendation on its own.
 
 ## Budget
 

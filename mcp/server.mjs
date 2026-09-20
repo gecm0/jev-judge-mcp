@@ -116,7 +116,7 @@ export async function runJev(params, signal) {
   signal?.throwIfAborted();
   if (!Check(parameters, params)) throw invalidArguments(params);
   const apiKey = process.env.TYPESAFE_API_KEY?.trim();
-  if (!apiKey) throw new Error("Set TYPESAFE_API_KEY in the environment that launches Claude Code, then restart it. Do not paste the key into chat.");
+  if (!apiKey) throw new Error("Set TYPESAFE_API_KEY in the environment that launches your MCP client, then restart it. Do not paste the key into chat.");
   // A key with interior whitespace or a smart quote makes fetch throw a TypeError naming the key
   // itself, which the catch below must swallow. Reject it here, where the message can be useful.
   if (!/^[\x21-\x7e]+$/.test(apiKey)) throw new Error("TYPESAFE_API_KEY contains characters that cannot be sent in an HTTP header, likely a newline, non-breaking space, or smart quote from copy-paste. Re-copy the key as plain ASCII. Do not paste the key into chat.");
@@ -214,7 +214,7 @@ export const toolDescription = [
 const { $schema, ...inputSchema } = parameters;
 
 export function createServer() {
-  const server = new Server({ name: "jev", version: "0.3.0" }, { capabilities: { tools: {} } });
+  const server = new Server({ name: "jev", version: "0.5.0" }, { capabilities: { tools: {} } });
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [{ name: TOOL_NAME, title: "Jev", description: toolDescription, inputSchema }],
   }));
