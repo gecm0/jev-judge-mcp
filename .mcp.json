@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "jev": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/server.mjs"]
+      "command": "npx",
+      "args": ["-y", "jev-judge-mcp"]
     }
   }
 }

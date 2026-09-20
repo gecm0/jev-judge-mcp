@@ -1,9 +1,33 @@
 {
   "name": "jev-judge-mcp",
   "version": "0.5.0",
-  "private": true,
   "description": "MCP server exposing TypeSafe's Jev as a `judge` tool for typed judgments with calibrated probabilities. Works in any MCP client; ships an optional Claude Code plugin wrapper.",
+  "license": "MIT",
+  "author": "German Castro",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gecm0/jev-judge-mcp.git"
+  },
+  "homepage": "https://github.com/gecm0/jev-judge-mcp#readme",
+  "bugs": "https://github.com/gecm0/jev-judge-mcp/issues",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "typesafe",
+    "jev",
+    "decision",
+    "classification",
+    "claude-code"
+  ],
   "type": "module",
+  "packageManager": "pnpm@11.1.2",
+  "bin": {
+    "jev-judge-mcp": "mcp/server.mjs"
+  },
+  "files": [
+    "mcp",
+    "skills"
+  ],
   "engines": {
     "node": ">=22.18"
   },

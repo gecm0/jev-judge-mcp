@@ -1,0 +1,36 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  id-token: write # npm trusted publishing; no NPM_TOKEN secret needed
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      # A tag that disagrees with package.json publishes a version nobody asked for,
+      # and npm versions cannot be replaced once taken.
+      - name: Tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p 'require("./package.json").version')"
+          test "$tag" = "$pkg" || { echo "tag $tag != package.json $pkg"; exit 1; }
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+      # Trusted publishing needs npm >= 11.5.1; it also attaches provenance on its own.
+      - run: npm install -g npm@latest
+      - run: npm publish

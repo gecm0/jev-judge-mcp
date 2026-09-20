@@ -9,27 +9,66 @@ Jev complements the active model; it does not replace it.
 
 ## Install
 
-The server is plain MCP over stdio and needs no vendor-specific environment, so any MCP client
-works. Point it at `mcp/server.mjs` with `node`:
+Two things get installed: the **MCP server**, which gives your agent the `judge` tool, and the
+**skill**, which teaches it to design a call worth making. They install separately; `npx skills`
+handles skills only and never touches MCP servers.
+
+### Let your agent install it
+
+Paste this into Claude Code, Codex, OpenCode, or any other coding agent. Nothing to clone or
+configure first.
+
+> Install the Jev `judge` MCP tool and its skill into yourself, the coding agent reading this.
+>
+> 1. Work out which agent you are, and run only your own line:
+>    - **Claude Code**: `claude plugin marketplace add gecm0/jev-judge-mcp` then
+>      `claude plugin install typesafe@jev`. That registers the server and the skill together, so
+>      skip step 2.
+>    - **Codex**: `codex mcp add jev -- npx -y jev-judge-mcp`
+>    - **OpenCode**: `opencode mcp add jev -- npx -y jev-judge-mcp`
+>    - **Any other agent**: register `npx -y jev-judge-mcp` as a stdio MCP server in its config.
+> 2. Install the skill: `npx skills add gecm0/jev-judge-mcp --skill jev`
+> 3. Install the companion skill this one refers to:
+>    `npx skills add typesafe-ai/skills --skill typesafe-ai`
+> 4. Report back which agent you registered with, plus this instruction: get a key from
+>    https://console.typesafe.ai/, export `TYPESAFE_API_KEY` in the shell that launches you, and
+>    restart. Leave the key in the environment, where the config references it by name.
+>
+> You are done when `judge` shows up in your own tool list after that restart.
+
+### Or do it by hand
+
+The server is plain MCP over stdio and needs no vendor-specific environment, so any client works.
+For one without an `mcp add` command, put this in its config:
 
 ```json
 {
   "mcpServers": {
-    "jev": { "command": "node", "args": ["/absolute/path/to/jev-judge-mcp/mcp/server.mjs"] }
+    "jev": { "command": "npx", "args": ["-y", "jev-judge-mcp"] }
   }
 }
 ```
 
-Claude Code can instead install the bundled plugin, which adds the question-design skill:
+Codex uses `~/.codex/config.toml` with a `[mcp_servers.jev]` table; OpenCode v2 uses
+`opencode.jsonc` with `mcp.servers.jev` and `"type": "local"`. Both also accept `codex mcp add`
+and `opencode mcp add`, which write the right shape for the version you have.
 
-```bash
-claude plugin marketplace add ~/Developer/jev-judge-mcp
-claude plugin install typesafe@jev
-```
+The skill is a plain `SKILL.md` directory that Claude Code, Codex and OpenCode all read. `npx
+skills` places it for you; copying `skills/jev/` into `~/.codex/skills/` or `.opencode/skills/`
+works too. Copy the directory, not just the file: skill IDs and relative paths come from it.
 
-Get an API key from [TypeSafe](https://console.typesafe.ai/). Set `TYPESAFE_API_KEY` in the
-environment that launches your client, then restart it. Do not paste the key into chat and do not
-commit it. This server does not load `.env` files.
+To run a working copy instead of the published one, clone the repo, `pnpm install`, and point the
+config at `node /absolute/path/to/mcp/server.mjs`.
+
+### API key
+
+Get one from [TypeSafe](https://console.typesafe.ai/). Set `TYPESAFE_API_KEY` in the environment
+that launches your client, then restart it. Do not paste the key into chat and do not commit it.
+This server does not load `.env` files.
+
+Claude Code and OpenCode can reference the variable from their config (`${TYPESAFE_API_KEY}` and
+`{env:TYPESAFE_API_KEY}`), so the key never lands in a config file. Codex takes literal strings in
+`[mcp_servers.jev.env]`, so prefer exporting the variable in the shell that starts it.
 
 `TYPESAFE_MODEL` optionally pins a version, for example `jev-1.13.0`. The default, `jev-latest`,
 follows TypeSafe's stable alias and can change over time. The response reports the model the API
@@ -43,7 +82,8 @@ Without a key the tool is still listed, and fails with a clear message before ma
 | --- | --- |
 | `mcp/server.mjs` | MCP stdio server exposing the `judge` tool |
 | `skills/jev/SKILL.md` | How to design a call: decomposition, fan-out, reading probabilities |
-| `.mcp.json` | Registers the server when the plugin is enabled |
+| `.mcp.json` | Registers the published server for the plugin, or for this repo as a project |
+| `.claude-plugin/` | Optional Claude Code packaging: bundles server and skill in one install |
 
 `pi-jev` shipped its usage guidance as `promptGuidelines`, which MCP has no hook for. That content
 is split in two, with each fact in exactly one place: the **tool description** holds what prevents
@@ -53,12 +93,12 @@ description. Adding a fact to both is a regression, not redundancy.
 
 ## Use
 
-Ask Claude, for example:
+Ask your agent, for example:
 
 > Use Jev to classify this bug report and assess its severity in one call:
 > Export crashes in Safari but works in Chrome.
 
-Claude supplies evidence and independent questions:
+The agent supplies evidence and independent questions:
 
 ```json
 {
@@ -116,8 +156,8 @@ answers.
   submitted evidence.
 - TypeSafe documents **64k tokens per request** and **32k for state plus the longest question** for
   Jev 1.13. The service enforces the budget; this server does not approximate it.
-- TypeSafe billing is separate from Claude's. Calls and results are retained in normal session
-  history.
+- TypeSafe billing is separate from your agent's own model billing. Calls and results are retained
+  in normal session history.
 - Output above **2000 lines or 50 KB** is truncated, with the full response written to a private
   temporary file (mode 0600). That file can contain sensitive evidence echoed back in rubric
   descriptions; remove it when no longer needed.
@@ -131,8 +171,8 @@ pnpm test
 
 Tests use simulated HTTP responses and need no API key. They cover the advertised JSON Schema,
 credential handling, request batching, per-question answer validation, HTTP and network failures,
-cancellation, and output truncation. They do not measure Jev's accuracy or prove your account can
-reach the live service.
+cancellation, output truncation, and the stdio entry point with `tools/list` and `tools/call`
+routing. They do not measure Jev's accuracy or prove your account can reach the live service.
 
 Protocol smoke test, also without a key:
 
@@ -143,10 +183,24 @@ printf '%s\n%s\n%s\n' \
  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | node mcp/server.mjs
 ```
 
-For a live test after configuring the key, ask Claude:
+For a live test after configuring the key, ask your agent:
 
 > Call judge with state "The sky is blue" and a noul question asking whether the text mentions a
 > colour. Show the probability and the model the API returned.
+
+## Release
+
+CI runs the suite on every push and pull request. Publishing is a tag:
+
+```bash
+# bump "version" in package.json, commit, then
+git tag v0.5.1 && git push origin v0.5.1
+```
+
+`.github/workflows/publish.yml` re-runs the tests, refuses a tag that disagrees with
+`package.json`, and publishes to npm through trusted publishing, so there is no `NPM_TOKEN` secret
+and provenance is attached automatically. Configure the trusted publisher once under the package's
+settings on npmjs.com, pointing it at this repository and `publish.yml`.
 
 ## Differences from `pi-jev`
 
