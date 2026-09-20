@@ -1,6 +1,6 @@
 {
   "name": "typesafe",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Ask TypeSafe's Jev, a fast System One decision model, for typed judgments with calibrated probabilities. Bundles the judge MCP tool and a skill teaching Claude when and how to use it.",
   "author": {
     "name": "German Castro"

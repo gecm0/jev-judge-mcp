@@ -225,7 +225,7 @@ export const toolDescription = [
 const { $schema, ...inputSchema } = parameters;
 
 export function createServer() {
-  const server = new Server({ name: "jev", version: "0.5.1" }, { capabilities: { tools: {} } });
+  const server = new Server({ name: "jev", version: "0.5.2" }, { capabilities: { tools: {} } });
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [{ name: TOOL_NAME, title: "Jev", description: toolDescription, inputSchema }],
   }));

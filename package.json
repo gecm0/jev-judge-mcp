@@ -1,6 +1,6 @@
 {
   "name": "jev-judge-mcp",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "MCP server exposing TypeSafe's Jev as a `judge` tool for typed judgments with calibrated probabilities. Works in any MCP client; ships an optional Claude Code plugin wrapper.",
   "license": "MIT",
   "author": "German Castro",
