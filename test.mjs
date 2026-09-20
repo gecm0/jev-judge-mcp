@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { execPath } from "node:process";
+import { spawn } from "node:child_process";
 import { readFile, rm } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { TOOL_NAME, createServer, parameters, runJev, toolDescription } from "./mcp/server.mjs";
 
@@ -109,7 +112,39 @@ test("Jev MCP tool: schema, request contract, validation, failures, truncation",
   const path = truncatedText.match(/Full response: (.+)]/)?.[1];
   assert.ok(path, "truncation names the temporary file");
   assert.ok(truncatedText.length < 60_000);
+  // One oversized value must not collapse the output: cap on bytes, do not drop whole lines.
+  const body = truncatedText.slice(0, truncatedText.indexOf("\n\n[Output truncated"));
+  assert.ok(Buffer.byteLength(body) <= 50_000, "output honours the byte ceiling");
+  assert.ok(Buffer.byteLength(body) > 40_000, "output keeps the head instead of collapsing");
+  assert.match(body, /"model": "jev-1\.13\.0"/);
   const full = JSON.parse(await readFile(path, "utf8"));
   assert.equal(full.answers.filler.length, 60_000);
   await rm(dirname(path), { recursive: true, force: true });
+});
+
+// The only path an MCP client uses: the entry-point guard, the stdio transport, and tool routing.
+// Importing runJev directly exercises none of them, so a silent dead server would ship unnoticed.
+test("stdio server: starts, lists the tool, routes tools/call", async () => {
+  const server = join(dirname(fileURLToPath(import.meta.url)), "mcp", "server.mjs");
+  const requests = [
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "0" } } },
+    { jsonrpc: "2.0", method: "notifications/initialized" },
+    { jsonrpc: "2.0", id: 2, method: "tools/list" },
+    { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "judge", arguments: { state: "x", questions: { a: { type: "noul", instructions: "?" } } } } },
+  ];
+  const child = spawn(execPath, [server], {
+    // No key: tools/call must fail before any request, so this test never touches the network.
+    env: { ...process.env, TYPESAFE_API_KEY: "" },
+    stdio: ["pipe", "pipe", "inherit"],
+  });
+  child.stdin.end(requests.map((request) => JSON.stringify(request)).join("\n") + "\n");
+  let out = "";
+  for await (const chunk of child.stdout) out += chunk;
+  const byId = new Map(out.split("\n").filter(Boolean).map((line) => JSON.parse(line)).map((message) => [message.id, message]));
+
+  assert.equal(byId.get(1)?.result.serverInfo.name, "jev");
+  assert.deepEqual(byId.get(2)?.result.tools.map((tool) => tool.name), ["judge"]);
+  assert.equal(byId.get(2)?.result.tools[0].inputSchema.type, "object");
+  // Routed to runJev, and its error reached the client rather than crashing the transport.
+  assert.match(JSON.stringify(byId.get(3)), /Set TYPESAFE_API_KEY/);
 });

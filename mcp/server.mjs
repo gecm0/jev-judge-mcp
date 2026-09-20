@@ -3,9 +3,11 @@
 // keeping its request contract, validation and error handling.
 // Claude Code builds the agent-visible name as mcp__plugin_{plugin}_{server}__{tool}, so this
 // resolves to mcp__plugin_typesafe_jev__judge. A verb here is what tells the agent what a call does.
+import { realpathSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
@@ -99,17 +101,23 @@ const MAX_LINES = 2000;
 const MAX_BYTES = 50_000;
 
 // Keep the head of the payload: the model needs the start of the JSON, and the tail is the least
-// informative part of a long answer list.
+// informative part of a long answer list. Cap lines first, then bytes: dropping whole lines until
+// the budget fits collapses the output to "{" whenever a single value carries most of the payload.
 function truncate(text) {
   const lines = text.split("\n");
-  if (lines.length <= MAX_LINES && Buffer.byteLength(text) <= MAX_BYTES) {
-    return { content: text, truncated: false, outputLines: lines.length, totalLines: lines.length };
+  let content = lines.slice(0, MAX_LINES).join("\n");
+  const bytes = Buffer.from(content);
+  if (bytes.length > MAX_BYTES) {
+    // Cutting mid-character decodes to a trailing U+FFFD; drop it rather than emit a stray glyph.
+    content = bytes.subarray(0, MAX_BYTES).toString("utf8").replace(/\ufffd$/, "");
   }
-  let kept = lines.slice(0, MAX_LINES);
-  while (kept.length > 1 && Buffer.byteLength(kept.join("\n")) > MAX_BYTES) {
-    kept = kept.slice(0, Math.max(1, Math.floor(kept.length * 0.9)));
-  }
-  return { content: kept.join("\n"), truncated: true, outputLines: kept.length, totalLines: lines.length };
+  const truncated = content !== text;
+  return {
+    content,
+    truncated,
+    outputLines: truncated ? content.split("\n").length : lines.length,
+    totalLines: lines.length,
+  };
 }
 
 export async function runJev(params, signal) {
@@ -122,6 +130,7 @@ export async function runJev(params, signal) {
   if (!/^[\x21-\x7e]+$/.test(apiKey)) throw new Error("TYPESAFE_API_KEY contains characters that cannot be sent in an HTTP header, likely a newline, non-breaking space, or smart quote from copy-paste. Re-copy the key as plain ASCII. Do not paste the key into chat.");
 
   const timeout = AbortSignal.timeout(30_000);
+  const deadline = "TypeSafe did not respond within 30 seconds. No judgment was returned; no automatic retry was made.";
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   const started = performance.now();
   let response;
@@ -136,8 +145,10 @@ export async function runJev(params, signal) {
   } catch {
     // Never surface this error. Header construction runs inside the try, and Node embeds the
     // offending header value, the API key, in the TypeError it throws.
-    requestSignal.throwIfAborted();
-    throw new Error("Could not reach TypeSafe. No judgment was returned; no automatic retry was made.");
+    // A caller abort propagates as AbortError; the deadline is ours to explain, so it gets the same
+    // no-retry guidance as an unreachable host instead of a bare TimeoutError.
+    signal?.throwIfAborted();
+    throw new Error(timeout.aborted ? deadline : "Could not reach TypeSafe. No judgment was returned; no automatic retry was made.");
   }
   if (!response.ok) {
     const error = new Error(`TypeSafe HTTP ${response.status}. ${statusHints[response.status] ?? "No judgment was returned."} No automatic retry was made.`);
@@ -150,8 +161,9 @@ export async function runJev(params, signal) {
   try {
     data = await response.json();
   } catch {
-    requestSignal.throwIfAborted();
-    throw new Error("TypeSafe returned an unreadable response.");
+    // The deadline covers the body stream too, so a cut-off read is a timeout, not a bad payload.
+    signal?.throwIfAborted();
+    throw new Error(timeout.aborted ? deadline : "TypeSafe returned an unreadable response.");
   }
   if (!Check(envelope, data)) throw new Error("TypeSafe returned an invalid response envelope.");
   for (const [id, question] of Object.entries(params.questions)) {
@@ -226,6 +238,9 @@ export function createServer() {
 }
 
 // Only connect stdio when run as the server, so tests can import runJev without a transport.
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL over realpath, not a `file://` template: argv[1] is the node_modules/.bin symlink
+// under npx, and a path with a space or a Windows backslash does not match import.meta.url
+// verbatim either. Every mismatch exits 0 with a server that never answers.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   await createServer().connect(new StdioServerTransport());
 }
