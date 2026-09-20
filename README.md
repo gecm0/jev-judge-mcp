@@ -2,8 +2,7 @@
 
 An MCP server giving a coding agent one tool, `judge`, for consulting
 [TypeSafe's Jev](https://docs.typesafe.ai/concepts/system-one): narrow typed questions about
-supplied evidence, answered with calibrated probabilities instead of prose. Ported from the Pi
-extension `pi-jev`, keeping its request contract, validation and error handling.
+supplied evidence, answered with calibrated probabilities instead of prose.
 
 Jev complements the active model; it does not replace it.
 
@@ -85,8 +84,8 @@ Without a key the tool is still listed, and fails with a clear message before ma
 | `.mcp.json` | Registers the published server for the plugin, or for this repo as a project |
 | `.claude-plugin/` | Optional Claude Code packaging: bundles server and skill in one install |
 
-`pi-jev` shipped its usage guidance as `promptGuidelines`, which MCP has no hook for. That content
-is split in two, with each fact in exactly one place: the **tool description** holds what prevents
+MCP has no hook for always-on usage guidance beyond the tool description, so the guidance is split
+in two, with each fact in exactly one place: the **tool description** holds what prevents
 a wrong action (when to reach for it, and how to misread a result), since it is loaded on every
 turn; the **skill** holds question design, and is reached through a pointer at the end of the tool
 description. Adding a fact to both is a regression, not redundancy.
@@ -201,15 +200,6 @@ git tag v0.5.1 && git push origin v0.5.1
 `package.json`, and publishes to npm through trusted publishing, so there is no `NPM_TOKEN` secret
 and provenance is attached automatically. Configure the trusted publisher once under the package's
 settings on npmjs.com, pointing it at this repository and `publish.yml`.
-
-## Differences from `pi-jev`
-
-- `defineTool` and the Pi `ExtensionAPI` are replaced by an MCP stdio server.
-- `promptSnippet` and `promptGuidelines` have no MCP equivalent; their content moved into the tool
-  description and the skill.
-- Pi's `truncateHead` is replaced by a local head-truncation helper with the same limits.
-- The startup warning about a missing key is gone: a plugin MCP server has no UI. The first call
-  reports it instead.
 
 ## References
 

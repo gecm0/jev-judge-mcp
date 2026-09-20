@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// MCP server exposing a single `judge` tool. Ported from the Pi extension pi-jev,
-// keeping its request contract, validation and error handling.
+// MCP server exposing a single `judge` tool.
 // Claude Code builds the agent-visible name as mcp__plugin_{plugin}_{server}__{tool}, so this
 // resolves to mcp__plugin_typesafe_jev__judge. A verb here is what tells the agent what a call does.
 import { realpathSync } from "node:fs";
